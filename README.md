@@ -120,13 +120,12 @@ You can use the sample files for testing in `test_files` folder.
 
 ## Contributors
 
-- **Aditya Kotkar** - [ADI-KOTKAR](https://github.com/ADI-KOTKAR)
-- **Shreyas Khadapkar** - [shreyaskhadapkar](https://github.com/shreyaskhadapkar)
-- **Praveenkumar Khatri** - [PraveenKhatri](https://github.com/PraveenKhatri)
+- **Soniya patil**
+- **keerti.M** 
+- **Fiza**
 
-## License
 
-- Project link: [Stega](https://github.com/ADI-KOTKAR/Stega)
-- [License](https://github.com/ADI-KOTKAR/Stega/blob/master/LICENSE)
+
+
 
 
