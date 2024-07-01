@@ -15,3 +15,4 @@ stepic==0.5.0
 Wave==0.0.2
 Werkzeug==1.0.1
 wincertstore==0.2
+sqlite3==3.0

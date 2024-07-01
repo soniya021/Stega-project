@@ -4,7 +4,7 @@ from modes.Image.image import image
 from modes.Audio.audio import audio
 from modes.Text.text import text
 from modes.Video.video import video
-
+from database import create_connection, initialize_database
 
 UPLOAD_IMAGE_FOLDER = 'modes\\Image\\static'
 IMAGE_CACHE_FOLDER = 'modes\\Image\\__pycache__'
@@ -14,9 +14,6 @@ UPLOAD_AUDIO_FOLDER = 'modes\\Audio\\static'
 AUDIO_CACHE_FOLDER = 'modes\\Audio\\__pycache__'
 UPLOAD_VIDEO_FOLDER = 'modes\\Video\\static'
 VIDEO_CACHE_FOLDER = 'modes\\Video\\__pycache__'
-
-
-# ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 app = Flask(__name__)
 app.secret_key = "hello"
@@ -33,9 +30,14 @@ app.register_blueprint(audio, url_prefix="/audio")
 app.register_blueprint(text, url_prefix="/text")
 app.register_blueprint(video, url_prefix="/video")
 
+# Initialize the database
+initialize_database()
+
 @app.route("/")
 def home():
     return render_template("home.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
