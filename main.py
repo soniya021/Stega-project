@@ -4,7 +4,7 @@ from modes.Image.image import image
 from modes.Audio.audio import audio
 from modes.Text.text import text
 from modes.Video.video import video
-from database import create_connection, initialize_database
+from database import create_tables
 
 UPLOAD_IMAGE_FOLDER = 'modes\\Image\\static'
 IMAGE_CACHE_FOLDER = 'modes\\Image\\__pycache__'
@@ -31,13 +31,14 @@ app.register_blueprint(text, url_prefix="/text")
 app.register_blueprint(video, url_prefix="/video")
 
 # Initialize the database
-initialize_database()
+
 
 @app.route("/")
 def home():
     return render_template("home.html")
 
 if __name__ == "__main__":
+    create_tables()
     app.run(debug=True)
 
 

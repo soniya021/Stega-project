@@ -1,171 +1,93 @@
 import os
-import cv2
-import numpy as np
-import random
 import shutil
-from flask import Blueprint, current_app, render_template, url_for, redirect, request, session, flash
-from datetime import timedelta
-# from flask_wtf import FlaskForm
+from PIL import Image
+import stepic
+import sqlite3
+from flask import Blueprint, current_app, render_template, request, flash
 from werkzeug.utils import secure_filename
 
-image = Blueprint("image", __name__, static_folder="static",
-                  template_folder="templates")
-
+image = Blueprint("image", __name__, static_folder="static", template_folder="templates")
 
 @image.route("/encode")
 def image_encode():
     if os.path.exists(current_app.config['IMAGE_CACHE_FOLDER']):
-        shutil.rmtree(
-            current_app.config['IMAGE_CACHE_FOLDER'], ignore_errors=False)
+        shutil.rmtree(current_app.config['IMAGE_CACHE_FOLDER'], ignore_errors=False)
     else:
         print("Not Found")
 
-    if os.path.exists(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], "adjusted_sample.jpg")):
-        # print("Found")
-        os.remove(os.path.join(
-            current_app.config['UPLOAD_IMAGE_FOLDER'], "adjusted_sample.jpg"))
-    else:
-        print("Not found")
-
     if os.path.exists(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], "encrypted_image.png")):
-        # print("Found")
-        os.remove(os.path.join(
-            current_app.config['UPLOAD_IMAGE_FOLDER'], "encrypted_image.png"))
+        os.remove(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], "encrypted_image.png"))
     else:
         print("Not found")
-
     return render_template("encode-image.html")
-
 
 @image.route("/encode-result", methods=['POST', 'GET'])
 def image_encode_result():
     if request.method == 'POST':
-        if 'file' not in request.files:
+        message = request.form['message']
+        if 'image' not in request.files:
             flash('No image found')
-            # return redirect(request.url)
+            return redirect(request.url)
         file = request.files['image']
+
         if file.filename == '':
-            flash('No selected image')
-            # return redirect(request.url)
+            flash('No image selected')
+            return redirect(request.url)
 
         if file:
             filename = secure_filename(file.filename)
-            file.save(os.path.join(
-                current_app.config['UPLOAD_IMAGE_FOLDER'], filename))
-            encryption = True
-            encrypt(os.path.join(
-                current_app.config['UPLOAD_IMAGE_FOLDER'], filename))
+            file.save(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], filename))
+            image_encryption = True
+            encrypted_image_path = encrypt_image(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], filename), message)
+            save_image_to_db(filename, encrypted_image_path, message)
         else:
-            encryption = False
+            image_encryption = False
         result = request.form
-        return render_template("encode-result.html", result=result, file=file, encryption=encryption)
 
+        return render_template("encode-image-result.html", result=result, file=file, image_encryption=image_encryption, message=message)
 
 @image.route("/decode")
 def image_decode():
-    if os.path.exists(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], "decrypted_sample.png")):
-        # print("Found")
-        os.remove(os.path.join(
-            current_app.config['UPLOAD_IMAGE_FOLDER'], "decrypted_sample.png"))
-    else:
-        print("Not found")
-
-    if os.path.exists(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], "decrypted_secret.png")):
-        # print("Found")
-        os.remove(os.path.join(
-            current_app.config['UPLOAD_IMAGE_FOLDER'], "decrypted_secret.png"))
-    else:
-        print("Not found")
-
     return render_template("decode-image.html")
-
 
 @image.route("/decode-result", methods=['POST', 'GET'])
 def image_decode_result():
     if request.method == 'POST':
-        if 'file' not in request.files:
+        if 'image' not in request.files:
             flash('No image found')
-            # return redirect(request.url)
+            return redirect(request.url)
         file = request.files['image']
         if file.filename == '':
-            flash('No selected image')
-            # return redirect(request.url)
-
+            flash('No image selected')
+            return redirect(request.url)
         if file:
             filename = secure_filename(file.filename)
-            file.save(os.path.join(
-                current_app.config['UPLOAD_IMAGE_FOLDER'], filename))
-            decryption = True
-            decrypt(os.path.join(
-                current_app.config['UPLOAD_IMAGE_FOLDER'], filename))
+            file.save(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], filename))
+            image_decryption = True
+            message = decrypt_image(os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], filename))
         else:
-            decryption = False
+            image_decryption = False
         result = request.form
-        return render_template("decode-result.html", result=result, file=file, decryption=decryption)
+        return render_template("decode-image-result.html", result=result, file=file, image_decryption=image_decryption, message=message)
 
-# Encryption function
+def encrypt_image(image_path, message):
+    im = Image.open(image_path)
+    im1 = stepic.encode(im, bytes(str(message), encoding='utf-8'))
+    encrypted_image_path = os.path.join(current_app.config['UPLOAD_IMAGE_FOLDER'], "encrypted_image.png")
+    im1.save(encrypted_image_path)
+    return encrypted_image_path
 
+def decrypt_image(image_path):
+    im2 = Image.open(image_path)
+    stegoImage = stepic.decode(im2)
+    return stegoImage
 
-def encrypt(image_1):
-
-    # img1 and img2 are the
-    # two input images
-    img2 = cv2.imread(image_1)
-    dimensions = img2.shape
-
-    adjusted_sample_image = cv2.imread(os.path.join(
-        current_app.config['UPLOAD_IMAGE_FOLDER'], "sample.jpg")).copy()
-    adjusted_sample_image = cv2.resize(
-        adjusted_sample_image, (dimensions[1], dimensions[0]))
-    cv2.imwrite(os.path.join(
-        current_app.config['UPLOAD_IMAGE_FOLDER'], "adjusted_sample.jpg"), adjusted_sample_image)
-    img1 = cv2.imread(os.path.join(
-        current_app.config['UPLOAD_IMAGE_FOLDER'], "adjusted_sample.jpg"))
-
-    for i in range(img2.shape[0]):
-        for j in range(img2.shape[1]):
-            for l in range(3):
-
-                # v1 and v2 are 8-bit pixel values
-                # of img1 and img2 respectively
-                v1 = format(img1[i][j][l], '08b')
-                v2 = format(img2[i][j][l], '08b')
-
-                # Taking 4 MSBs of each image
-                v3 = v1[:4] + v2[:4]
-
-                img1[i][j][l] = int(v3, 2)
-
-    cv2.imwrite(os.path.join(
-        current_app.config['UPLOAD_IMAGE_FOLDER'], "encrypted_image.png"), img1)
-
-
-# Decryption function
-def decrypt(image_1):
-
-    # Encrypted image
-    img = cv2.imread(image_1)
-    width = img.shape[0]
-    height = img.shape[1]
-
-    # img1 and img2 are two blank images
-    img1 = np.zeros((width, height, 3), np.uint8)
-    img2 = np.zeros((width, height, 3), np.uint8)
-
-    for i in range(width):
-        for j in range(height):
-            for l in range(3):
-                v1 = format(img[i][j][l], '08b')
-                v2 = v1[:4] + chr(random.randint(0, 1)+48) * 4
-                v3 = v1[4:] + chr(random.randint(0, 1)+48) * 4
-
-                # Appending data to img1 and img2
-                img1[i][j][l] = int(v2, 2)
-                img2[i][j][l] = int(v3, 2)
-
-    # These are two images produced from
-    # the encrypted image
-    cv2.imwrite(os.path.join(
-        current_app.config['UPLOAD_IMAGE_FOLDER'], "decrypted_sample.png"), img1)
-    cv2.imwrite(os.path.join(
-        current_app.config['UPLOAD_IMAGE_FOLDER'], "decrypted_secret.png"), img2)
+def save_image_to_db(original_filename, encrypted_image_path, message):
+    conn = sqlite3.connect('steganography.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO images (original_filename, encrypted_image_path, message)
+    VALUES (?, ?, ?)
+    """, (original_filename, encrypted_image_path, message))
+    conn.commit()
+    conn.close()
